@@ -1,0 +1,9 @@
+twitter-piko.keystore
+downloads/
+merged/
+output/
+revanced-cli-*.jar
+patches-*.rvp
+tools/apkmd.exe
+tools/APKEditor.jar
+version_temp.json
