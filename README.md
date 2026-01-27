@@ -3,7 +3,7 @@
 ## Prerequisites
 
 1. **PowerShell** - Required (comes with Windows 10/11)
-2. Download `apkmd.exe` from https://github.com/tanishqmanuja/apkmirror-downloader/releases
+2. Download `apkmd.exe` from https://github.com/hyzor/apkmirror-downloader/releases
 3. Download `APKEditor.jar` from https://github.com/REAndroid/APKEditor/releases
 
 Put `apkmd.exe` and `APKEditor.jar` in the `tools` folder.
