@@ -1,6 +1,6 @@
 param(
     [string]$OutputDir = "output",
-    [string]$CliVersion = "5.0.2-dev.2", 
+    [string]$CliVersion = "auto", 
     [string]$PatchesVersion = "auto",
     [string]$TwitterVersion = "latest",
     [switch]$Help = $false
@@ -12,7 +12,7 @@ if ($Help) {
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -OutputDir DIR          Specify output directory (default: output)"
-    Write-Host "  -CliVersion VER         Specify ReVanced CLI version (default: 5.0.2-dev.2)"  
+    Write-Host "  -CliVersion VER         Specify ReVanced CLI version (default: auto - fetches latest pre-release from GitHub)"  
     Write-Host "  -PatchesVersion VER     Specify Piko Patches version (default: auto - fetches latest from GitHub)"
     Write-Host "  -TwitterVersion VER     Specify Twitter version (default: latest)"
     Write-Host "  -Help                   Show this help message"
@@ -45,6 +45,20 @@ if (-not (Test-Path "tools\APKEditor.jar")) {
 }
 
 Write-Host "Tools found successfully."
+
+# Fetch latest ReVanced CLI if auto
+if ($revancedCli -eq "auto") {
+    Write-Host "Fetching latest ReVanced CLI pre-release version from GitHub..."
+    try {
+        $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ReVanced/revanced-cli/releases" -ErrorAction Stop
+        $latestPreRelease = $releases | Where-Object { $_.prerelease -eq $true } | Select-Object -First 1
+        $revancedCli = $latestPreRelease.tag_name.TrimStart('v')
+        Write-Host "Latest ReVanced CLI pre-release version detected: $revancedCli"
+    } catch {
+        Write-Host "Failed to fetch latest version, using fallback"
+        $revancedCli = "5.0.2-dev.2"
+    }
+}
 
 # Find Twitter APK
 $twitterApk = $null
