@@ -80,10 +80,58 @@ function Extract-VersionFromFilename($filename) {
 }
 
 if ($twitterVersion -eq "latest") {
+    Write-Host "Fetching available Twitter versions from apkmd..."
+    try {
+        $versionsResult = & .\tools\apkmd.exe versions x-corp twitter
+        if ($LASTEXITCODE -ne 0) {
+            Write-Host "Failed to fetch versions from apkmd, falling back to local search"
+            $latestVersion = $null
+        } else {
+            # Parse the versions list - skip header lines and extract version from numbered entries like "1. X 11.61.0-release.0"
+            $versionsList = $versionsResult -split '[\r\n]+' | Where-Object { $_.Trim() -ne '' -and $_ -match '^\d+\.' }
+            if ($versionsList.Count -gt 0) {
+                # Extract version from the first numbered entry (latest)
+                $firstEntry = $versionsList[0].Trim()
+                # Match pattern like "1. X 11.61.0-release.0" and capture the version part
+                if ($firstEntry -match '^\d+\.\s*[A-Za-z]*\s*(.+)$') {
+                    $latestVersion = $matches[1].Trim()
+                    Write-Host "Latest version available: $latestVersion"
+                } else {
+                    Write-Host "Could not parse version from: $firstEntry"
+                    $latestVersion = $null
+                }
+            } else {
+                Write-Host "No version entries found from apkmd, falling back to local search"
+                $latestVersion = $null
+            }
+        }
+    } catch {
+        Write-Host "Error running apkmd versions command, falling back to local search"
+        $latestVersion = $null
+    }
+    
     Write-Host "Looking for any Twitter APK in downloads directory..."
     $apkFiles = Get-ChildItem -Path "downloads\com.twitter.android_*" -ErrorAction SilentlyContinue
     
-    if ($apkFiles.Count -gt 0) {
+    if ($apkFiles.Count -gt 0 -and $latestVersion) {
+        Write-Host "Found $($apkFiles.Count) APK files, checking if latest version ($latestVersion) is already downloaded..."
+        
+        # Look for APK with the latest version
+        $latestVersionApk = $apkFiles | Where-Object { 
+            $versionInfo = Extract-VersionFromFilename $_.Name
+            $versionInfo.Base -eq $latestVersion
+        } | Select-Object -First 1
+        
+        if ($latestVersionApk) {
+            $twitterApk = $latestVersionApk.Name
+            $versionInfo = Extract-VersionFromFilename $twitterApk
+            $actualVersion = $versionInfo.Base
+            Write-Host "Found APK with latest version: $twitterApk"
+            Write-Host "Extracted version: $actualVersion"
+        } else {
+            Write-Host "Latest version ($latestVersion) not found locally, will download"
+        }
+    } elseif ($apkFiles.Count -gt 0) {
         Write-Host "Found $($apkFiles.Count) APK files:"
         foreach ($apk in $apkFiles) {
             $versionInfo = Extract-VersionFromFilename $apk.Name
@@ -113,8 +161,9 @@ if ($twitterVersion -eq "latest") {
 
 # Download Twitter APK if not found
 if (-not $twitterApk) {
-    Write-Host "Running apkmd.exe for version $twitterVersion..."
-    $apkmdResult = & .\tools\apkmd.exe download x-corp twitter --version $twitterVersion --type bundle --dpi * --outdir downloads
+    $versionToDownload = if ($twitterVersion -eq "latest" -and $latestVersion) { $latestVersion } else { $twitterVersion }
+    Write-Host "Running apkmd.exe for version $versionToDownload..."
+    $apkmdResult = & .\tools\apkmd.exe download x-corp twitter --version $versionToDownload --type bundle --dpi * --outdir downloads
     if ($LASTEXITCODE -ne 0) {
         Write-Host "apkmd.exe failed with error code $LASTEXITCODE"
         exit $LASTEXITCODE
