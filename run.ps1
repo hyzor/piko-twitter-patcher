@@ -12,7 +12,7 @@ if ($Help) {
     Write-Host ""
     Write-Host "Options:"
     Write-Host "  -OutputDir DIR          Specify output directory (default: output)"
-    Write-Host "  -CliVersion VER         Specify ReVanced CLI version (default: auto - fetches latest pre-release from GitHub)"  
+    Write-Host "  -CliVersion VER         Specify Morphe CLI version (default: auto - fetches latest pre-release from GitHub)"  
     Write-Host "  -PatchesVersion VER     Specify Piko Patches version (default: auto - fetches latest from GitHub)"
     Write-Host "  -TwitterVersion VER     Specify Twitter version (default: latest)"
     Write-Host "  -Help                   Show this help message"
@@ -25,7 +25,7 @@ if ($Help) {
 }
 
 # Default values (PowerShell parameters override these)
-$revancedCli = $CliVersion
+$morpheCli = $CliVersion
 $pikoPatches = $PatchesVersion
 $outputDir = $OutputDir
 $twitterVersion = $TwitterVersion
@@ -35,7 +35,7 @@ Write-Host "Checking required tools..."
 
 # Check if required tools exist
 if (-not (Test-Path "tools\apkmd.exe")) {
-    Write-Host "apkmd.exe not found. Please download it from https://github.com/tanishqmanuja/apkmirror-downloader/releases"
+    Write-Host "apkmd.exe not found. Please download it from https://github.com/hyzor/apkmirror-downloader/releases"
     exit 1
 }
 
@@ -46,17 +46,17 @@ if (-not (Test-Path "tools\APKEditor.jar")) {
 
 Write-Host "Tools found successfully."
 
-# Fetch latest ReVanced CLI if auto
-if ($revancedCli -eq "auto") {
-    Write-Host "Fetching latest ReVanced CLI pre-release version from GitHub..."
+# Fetch latest Morphe CLI if auto
+if ($morpheCli -eq "auto") {
+    Write-Host "Fetching latest Morphe CLI pre-release version from GitHub..."
     try {
-        $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/ReVanced/revanced-cli/releases" -ErrorAction Stop
+        $releases = Invoke-RestMethod -Uri "https://api.github.com/repos/MorpheApp/morphe-cli/releases" -ErrorAction Stop
         $latestPreRelease = $releases | Where-Object { $_.prerelease -eq $true } | Select-Object -First 1
-        $revancedCli = $latestPreRelease.tag_name.TrimStart('v')
-        Write-Host "Latest ReVanced CLI pre-release version detected: $revancedCli"
+        $morpheCli = $latestPreRelease.tag_name.TrimStart('v')
+        Write-Host "Latest Morphe CLI pre-release version detected: $morpheCli"
     } catch {
         Write-Host "Failed to fetch latest version, using fallback"
-        $revancedCli = "5.0.2-dev.2"
+        $morpheCli = "1.4.0-dev.5"
     }
 }
 
@@ -247,7 +247,7 @@ Write-Host "=== RUN PHASE ==="
 Write-Host "Configuration:"
 Write-Host "- Twitter Version: $twitterVersion"
 Write-Host "- Output Directory: $outputDir"
-Write-Host "- ReVanced CLI Version: $revancedCli"
+Write-Host "- Morphe CLI Version: $morpheCli"
 Write-Host "- Piko Patches Version: $pikoPatches"
 
 # Create output directory if needed
@@ -266,10 +266,10 @@ $finalApk = $mergedFiles[0].Name
 Write-Host "Twitter APK: $finalApk"
 
 # Download tools if needed
-$cliFile = "revanced-cli-$revancedCli-all.jar"
+$cliFile = "morphe-cli-$morpheCli-all.jar"
 if (-not (Test-Path $cliFile)) {
-    Write-Host "Downloading ReVanced CLI..."
-    Invoke-WebRequest -Uri "https://github.com/ReVanced/revanced-cli/releases/download/v$revancedCli/$cliFile" -OutFile $cliFile
+    Write-Host "Downloading Morphe CLI..."
+    Invoke-WebRequest -Uri "https://github.com/MorpheApp/morphe-cli/releases/download/v$morpheCli/$cliFile" -OutFile $cliFile
 }
 
 # Fetch latest Piko patches if auto
@@ -282,11 +282,11 @@ if ($pikoPatches -eq "auto") {
         Write-Host "Latest Piko patches pre-release version detected: $pikoPatches"
     } catch {
         Write-Host "Failed to fetch latest version, using fallback"
-        $pikoPatches = "2.0.0-dev.22"
+        $pikoPatches = "3.0.0-dev.1"
     }
 }
 
-$patchesFile = "patches-$pikoPatches.rvp"
+$patchesFile = "patches-$pikoPatches.mpp"
 if (-not (Test-Path $patchesFile)) {
     Write-Host "Downloading Piko Patches v$pikoPatches..."
     try {
@@ -294,7 +294,7 @@ if (-not (Test-Path $patchesFile)) {
         Write-Host "Successfully downloaded $patchesFile"
         
         # Clean up old patch files
-        Get-ChildItem -Path "patches-*.rvp" | Where-Object { $_.Name -ne $patchesFile } | ForEach-Object {
+        Get-ChildItem -Path "patches-*.mpp" | Where-Object { $_.Name -ne $patchesFile } | ForEach-Object {
             Write-Host "Removing old patch file: $($_.Name)"
             Remove-Item $_.FullName
         }
@@ -306,22 +306,24 @@ if (-not (Test-Path $patchesFile)) {
     Write-Host "Piko Patches v$pikoPatches already exists"
 }
 
-# Run ReVanced CLI
-Write-Host "Running ReVanced CLI..."
+# Run Morphe CLI
+Write-Host "Running Morphe CLI..."
 $outputFile = "$outputDir\twitter-piko_v$actualVersion-patches_v$pikoPatches.apk"
+
+# Note: --di 30 --di 44 to be able to patch 10.97.0
 
 # Check if keystore exists
 $keystoreFile = "twitter-piko.keystore"
 if (-not (Test-Path $keystoreFile)) {
     Write-Host "Warning: Keystore file $keystoreFile not found. Running without keystore..."
-    $revancedResult = & java -jar $cliFile patch "merged\$finalApk" -p $patchesFile -o $outputFile
+    $morpheResult = & java -jar $cliFile patch "merged\$finalApk" -p $patchesFile -o $outputFile
 } else {
     Write-Host "Using keystore: $keystoreFile"
-    $revancedResult = & java -jar $cliFile patch "merged\$finalApk" -p $patchesFile -o $outputFile --keystore=$keystoreFile
+    $morpheResult = & java -jar $cliFile patch "merged\$finalApk" -p $patchesFile --di 30 --di 44 -o $outputFile --keystore=$keystoreFile
 }
 
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "ReVanced CLI failed with error code $LASTEXITCODE"
+    Write-Host "Morphe CLI failed with error code $LASTEXITCODE"
     exit $LASTEXITCODE
 }
 
@@ -374,19 +376,19 @@ if (Test-Path $outputDir) {
         Remove-Item -Path $tempDir.FullName -Recurse -Force
     }
     
-    # Clean up ReVanced CLI temp directories (they often create temp folders in output)
-    $revancedTempDirs = Get-ChildItem -Path $outputDir -Directory -ErrorAction SilentlyContinue | Where-Object { 
-        $_.Name -match "revanced|temp|tmp|cache" 
+    # Clean up Morphe CLI temp directories (they often create temp folders in output)
+    $morpheTempDirs = Get-ChildItem -Path $outputDir -Directory -ErrorAction SilentlyContinue | Where-Object { 
+        $_.Name -match "morphe|temp|tmp|cache" 
     }
-    foreach ($tempDir in $revancedTempDirs) {
-        Write-Host "Removing ReVanced temp directory: $($tempDir.Name)"
+    foreach ($tempDir in $morpheTempDirs) {
+        Write-Host "Removing Morphe temp directory: $($tempDir.Name)"
         Remove-Item -Path $tempDir.FullName -Recurse -Force
     }
 }
 
 # Clean up any failed patch files
-if (Test-Path "patches-auto.rvp") {
-    Remove-Item "patches-auto.rvp" -Force
+if (Test-Path "patches-auto.mpp") {
+    Remove-Item "patches-auto.mpp" -Force
 }
 
 Write-Host "Cleanup completed."

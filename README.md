@@ -35,7 +35,7 @@ Run the PowerShell script which handles both preparation and patching in one go:
 **Note**: PowerShell uses `-` prefix for parameters, not `--`
 
 - `-OutputDir DIR` - Specify output directory (default: `output`)
-- `-CliVersion VER` - Specify ReVanced CLI version (default: `5.0.2-dev.2`)
+- `-CliVersion VER` - Specify Morphe CLI version (default: `1.4.0-dev.5`)
 - `-PatchesVersion VER` - Specify Piko Patches version (default: `auto` - fetches latest from GitHub)
 - `-TwitterVersion VER` - Specify Twitter version (default: `latest`)
 - `-Help` - Show help message
@@ -75,7 +75,7 @@ twitter/
    - Downloads required tools if missing
    - Fetches latest Piko patches (if auto)
    - Downloads correct patches version
-   - Runs ReVanced CLI to patch the APK
+   - Runs Morphe CLI to patch the APK
 
 3. **Cleanup Phase**
    - Removes temporary directories from all tools
