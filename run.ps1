@@ -73,7 +73,7 @@ function Get-VersionInfo {
 $twitterApk = $null
 if ($TwitterVersion -eq "latest") {
     try {
-        $result = & .\tools\apkmd.exe versions x-corp twitter
+        $result = & .\tools\apkmd.exe versions x-corp twitter --exclude-beta
         if ($LASTEXITCODE -eq 0) {
             $TwitterVersion = ($result -split '[\r\n]+' | Where-Object { $_ -match '^\d+\.\s' } | Select-Object -First 1) -replace '^\d+\.\s*[A-Za-z]*\s*', ''
             Write-Log "Latest detected version: $TwitterVersion"
